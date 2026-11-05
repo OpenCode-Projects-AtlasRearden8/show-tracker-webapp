@@ -1,0 +1,921 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light">
+<title>Show Tracker — family watch-list</title>
+<style>
+  :root {
+    --bg: #f7f3ec;
+    --card: #fffdf9;
+    --ink: #33261d;
+    --muted: #8a7a6d;
+    --line: #e6dcd0;
+    --accent: #c2602f;
+    --accent-soft: #f4e5d7;
+    --ok: #3d7a4f;
+    --ok-soft: #e2f0e4;
+    --tag: #6b5d50;
+    --tag-soft: #efe8df;
+    --radius: 14px;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--ink);
+    font: 16px/1.55 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  }
+  header {
+    padding: 28px 20px 10px;
+    max-width: 980px;
+    margin: 0 auto;
+  }
+  header h1 {
+    margin: 0;
+    font-family: Georgia, "Times New Roman", serif;
+    font-size: 2rem;
+    letter-spacing: 0.2px;
+  }
+  .tagline { margin: 4px 0 12px; color: var(--muted); }
+  .header-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+
+  nav.tabs {
+    max-width: 980px;
+    margin: 8px auto 0;
+    padding: 0 20px;
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+    border-bottom: 1px solid var(--line);
+  }
+  nav.tabs button {
+    border: none;
+    background: transparent;
+    padding: 10px 16px;
+    font: inherit;
+    color: var(--muted);
+    cursor: pointer;
+    border-bottom: 3px solid transparent;
+    border-radius: 8px 8px 0 0;
+  }
+  nav.tabs button:hover { background: var(--accent-soft); color: var(--ink); }
+  nav.tabs button.active {
+    color: var(--accent);
+    border-bottom-color: var(--accent);
+    font-weight: 600;
+  }
+  nav.tabs button .count {
+    background: var(--tag-soft);
+    border-radius: 999px;
+    padding: 0 7px;
+    font-size: 0.78em;
+    margin-left: 4px;
+  }
+
+  main { max-width: 980px; margin: 0 auto; padding: 10px 20px 60px; }
+  section.panel { display: none; }
+  section.panel.active { display: block; }
+
+  .card {
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    padding: 16px 18px;
+    margin: 14px 0;
+    box-shadow: 0 1px 3px rgba(80, 60, 40, 0.06);
+  }
+  .card h3 { margin: 0 0 6px; font-size: 1.12rem; }
+  .card .row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+  .card .grow { flex: 1 1 auto; }
+
+  .chip {
+    display: inline-block;
+    padding: 2px 10px;
+    border-radius: 999px;
+    font-size: 0.78rem;
+    background: var(--tag-soft);
+    color: var(--tag);
+    border: 1px solid var(--line);
+  }
+  .chip.platform { background: var(--accent-soft); color: var(--accent); border-color: transparent; font-weight: 600; }
+  .chip.mood { border-style: dashed; }
+  .chip.tag-ended { background: var(--tag-soft); }
+  .chip.tag-ongoing { background: var(--ok-soft); color: var(--ok); }
+  .chip.queue-pos { background: transparent; border-style: dashed; }
+
+  .progress { color: var(--muted); font-size: 0.92rem; margin: 6px 0; }
+  .progress strong { color: var(--ink); }
+  .bar {
+    height: 6px;
+    background: var(--tag-soft);
+    border-radius: 999px;
+    overflow: hidden;
+    max-width: 260px;
+    margin: 4px 0 6px;
+  }
+  .bar > span { display: block; height: 100%; background: var(--accent); border-radius: 999px; }
+  .note { color: var(--muted); font-size: 0.92rem; margin: 6px 0; font-style: italic; }
+
+  .actions { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 10px; }
+  button.btn {
+    font: inherit;
+    font-size: 0.88rem;
+    padding: 6px 14px;
+    border-radius: 999px;
+    border: 1px solid var(--line);
+    background: #fff;
+    color: var(--ink);
+    cursor: pointer;
+  }
+  button.btn:hover { border-color: var(--accent); color: var(--accent); }
+  button.btn.primary {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: #fff;
+    font-weight: 600;
+  }
+  button.btn.primary:hover { opacity: 0.9; color: #fff; }
+  button.btn.small { padding: 4px 10px; font-size: 0.8rem; }
+  button.btn:disabled { opacity: 0.45; cursor: not-allowed; }
+
+  form#showForm {
+    display: grid;
+    gap: 10px;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    align-items: end;
+  }
+  .field { display: flex; flex-direction: column; gap: 4px; }
+  .field.span2 { grid-column: span 2; }
+  @media (max-width: 560px) { .field.span2 { grid-column: span 1; } }
+  label { font-size: 0.82rem; color: var(--muted); font-weight: 600; }
+  input[type="text"], input[type="number"], select, input[list] {
+    font: inherit;
+    padding: 8px 10px;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    background: #fff;
+    color: var(--ink);
+    width: 100%;
+  }
+  input:focus, select:focus, button:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 1px;
+  }
+
+  .mood-picker { display: flex; gap: 6px; flex-wrap: wrap; }
+  .mood-picker button {
+    font: inherit;
+    font-size: 0.8rem;
+    padding: 4px 12px;
+    border-radius: 999px;
+    border: 1px dashed var(--line);
+    background: transparent;
+    color: var(--muted);
+    cursor: pointer;
+  }
+  .mood-picker button.selected {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: #fff;
+    border-style: solid;
+  }
+
+  .empty { color: var(--muted); text-align: center; padding: 30px 10px; }
+  .empty .big { font-size: 1.6rem; display: block; margin-bottom: 6px; }
+
+  .tonight-moods button { font-size: 0.88rem; padding: 6px 14px; }
+  #pickResult { margin-top: 14px; }
+  #pickResult .card { border-color: var(--accent); background: #fffdf7; }
+  .log-entry { display: flex; gap: 10px; align-items: baseline; flex-wrap: wrap; border-bottom: 1px solid var(--line); padding: 10px 2px; }
+  .log-entry:last-child { border-bottom: none; }
+  .log-entry .date { color: var(--muted); font-size: 0.85rem; min-width: 92px; }
+  .log-stats { color: var(--muted); font-size: 0.92rem; margin-bottom: 12px; }
+  .log-stats strong { color: var(--accent); font-size: 1.3rem; }
+  details.panel-toggle { margin: 14px 0; background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); padding: 10px 16px; }
+  details.panel-toggle summary { cursor: pointer; font-weight: 600; color: var(--accent); }
+  footer { text-align: center; color: var(--muted); font-size: 0.85rem; padding: 20px; }
+  .danger { color: #a33; }
+  [hidden] { display: none !important; }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Show Tracker</h1>
+  <p class="tagline">Your family watch-list, right here in your browser. No accounts, nothing leaves your device.</p>
+  <div class="header-actions">
+    <button class="btn small" id="exportBtn" type="button">Export backup</button>
+    <button class="btn small" id="importBtn" type="button">Import backup</button>
+    <button class="btn small danger" id="clearBtn" type="button">Clear all data</button>
+    <input type="file" id="importFile" accept="application/json" hidden>
+  </div>
+</header>
+
+<nav class="tabs" aria-label="Sections">
+  <button type="button" data-tab="tonight" class="active">Tonight</button>
+  <button type="button" data-tab="watching">Watching <span class="count" id="countWatching">0</span></button>
+  <button type="button" data-tab="queue">Queue <span class="count" id="countQueue">0</span></button>
+  <button type="button" data-tab="log">Wrap-up log</button>
+</nav>
+
+<main id="app">
+  <section class="panel active" id="panel-tonight">
+    <div class="card">
+      <h3>What's tonight's vibe?</h3>
+      <p class="progress">Pick one or more moods, then shuffle. We'll pick from shows that match.</p>
+      <div class="mood-picker tonight-moods" id="tonightMoods"></div>
+      <div class="actions">
+        <button class="btn primary" id="shuffleBtn" type="button">Shuffle tonight's pick</button>
+      </div>
+    </div>
+    <div id="pickResult" hidden></div>
+  </section>
+
+  <section class="panel" id="panel-watching"></section>
+
+  <section class="panel" id="panel-queue"></section>
+
+  <section class="panel" id="panel-log"></section>
+
+  <details class="panel-toggle" id="addPanel">
+    <summary id="addSummary">Add a show</summary>
+    <form id="showForm">
+      <div class="field span2">
+        <label for="fTitle">Title</label>
+        <input type="text" id="fTitle" placeholder="e.g. Tough as Nails" required>
+      </div>
+      <div class="field">
+        <label for="fPlatform">Where you watch it</label>
+        <input type="text" id="fPlatform" list="platformList" placeholder="Netflix">
+        <datalist id="platformList">
+          <option value="Netflix"></option>
+          <option value="Prime Video"></option>
+          <option value="HBO Max"></option>
+          <option value="Disney+"></option>
+          <option value="Hulu"></option>
+          <option value="Apple TV+"></option>
+          <option value="Peacock"></option>
+          <option value="Paramount+"></option>
+          <option value="Crunchyroll"></option>
+          <option value="Broadcast TV"></option>
+        </datalist>
+      </div>
+      <div class="field">
+        <label for="fStatus">List</label>
+        <select id="fStatus">
+          <option value="watching">Watching now</option>
+          <option value="want">Want to watch (queue)</option>
+        </select>
+      </div>
+      <div class="field">
+        <label for="fSeason">Season you're on</label>
+        <input type="number" id="fSeason" min="0" step="1" value="1">
+      </div>
+      <div class="field">
+        <label for="fEpisode">Last episode you watched</label>
+        <input type="number" id="fEpisode" min="0" step="1" value="0">
+      </div>
+      <div class="field">
+        <label for="fEps">Episodes per season (optional, for progress bar)</label>
+        <input type="number" id="fEps" min="0" step="1" placeholder="e.g. 10">
+      </div>
+      <div class="field span2">
+        <label>Moods (used by the Tonight shuffle)</label>
+        <div class="mood-picker" id="formMoods"></div>
+      </div>
+      <div class="field">
+        <label for="fEnded">Status of the show itself</label>
+        <select id="fEnded">
+          <option value="no">Still ongoing (new seasons may come)</option>
+          <option value="yes">Has ended</option>
+        </select>
+      </div>
+      <div class="field span2">
+        <label for="fNote">Where-you-stopped note ("next episode someday")</label>
+        <input type="text" id="fNote" placeholder='e.g. "Start E3 — we owe Sam an explanation."'>
+      </div>
+      <div class="actions">
+        <button class="btn primary" type="submit" id="formSubmit">Add show</button>
+        <button class="btn" type="button" id="formCancel" hidden>Cancel edit</button>
+      </div>
+    </form>
+  </details>
+</main>
+
+<footer>All data lives in this browser's localStorage on this device. Nothing is sent anywhere.<br>
+Show Tracker — an open-source tool by <strong>Asdale Dynamics, LLC</strong>. Licensed MIT.</footer>
+
+<script>
+/* APP_LOGIC_START */
+'use strict';
+
+var STORAGE_KEY = 'showTracker.v1';
+var MOODS = ['cozy', 'funny', 'thrilling', 'dark', 'light', 'drama', 'sci-fi', 'reality', 'docs', 'romance'];
+
+function uid() {
+  return 's' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2, 7);
+}
+
+function defaultState() {
+  return { shows: [], picks: [] };
+}
+
+function loadState() {
+  if (typeof localStorage === 'undefined') return defaultState();
+  var raw = null;
+  try { raw = localStorage.getItem(STORAGE_KEY); } catch (e) { return defaultState(); }
+  if (!raw) return defaultState();
+  var data;
+  try { data = JSON.parse(raw); } catch (e) { return defaultState(); }
+  if (!data || typeof data !== 'object') return defaultState();
+  var state = defaultState();
+  if (Array.isArray(data.shows)) state.shows = data.shows.map(normalizeShow);
+  if (Array.isArray(data.picks)) state.picks = data.picks.filter(function (p) { return typeof p === 'string'; }).slice(0, 5);
+  return state;
+}
+
+function saveState(state) {
+  if (typeof localStorage === 'undefined') return false;
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+    return true;
+  } catch (e) {
+    return false;
+  }
+}
+
+function normalizeShow(s) {
+  return {
+    id: typeof s.id === 'string' && s.id ? s.id : uid(),
+    title: typeof s.title === 'string' ? s.title : '',
+    platform: typeof s.platform === 'string' ? s.platform : '',
+    status: s.status === 'want' ? 'want' : (s.status === 'finished' ? 'finished' : 'watching'),
+    season: Number(s.season) >= 0 ? Number(s.season) : 1,
+    episode: Number(s.episode) >= 0 ? Number(s.episode) : 0,
+    episodesPerSeason: Number(s.episodesPerSeason) > 0 ? Number(s.episodesPerSeason) : null,
+    moods: Array.isArray(s.moods) ? s.moods.filter(function (m) { return MOODS.indexOf(m) !== -1; }) : [],
+    ended: !!s.ended,
+    note: typeof s.note === 'string' ? s.note : '',
+    addedAt: typeof s.addedAt === 'string' ? s.addedAt : '',
+    finishedAt: typeof s.finishedAt === 'string' ? s.finishedAt : '',
+    endedAt: typeof s.endedAt === 'string' ? s.endedAt : ''
+  };
+}
+
+/* ---- Progress logic ---- */
+
+function progressLabel(show) {
+  var s = Number(show.season) >= 0 ? Number(show.season) : 1;
+  var e = Number(show.episode) >= 0 ? Number(show.episode) : 0;
+  if (!s || !e) return 'not started';
+  return 'S' + s + ' E' + e;
+}
+
+function advanceEpisode(show, epsPerSeason) {
+  var s = Number(show.season) >= 1 ? Number(show.season) : 1;
+  var e = Number(show.episode) >= 0 ? Number(show.episode) : 0;
+  var eps = Number(epsPerSeason || show.episodesPerSeason) || 0;
+  e = e + 1;
+  if (eps && e > eps) {
+    s = s + 1;
+    e = 1;
+  }
+  var out = Object.assign({}, show, { season: s, episode: e });
+  if (out.status === 'want') out.status = 'watching';
+  return out;
+}
+
+function retreatEpisode(show, epsPerSeason) {
+  var s = Number(show.season) >= 1 ? Number(show.season) : 1;
+  var e = Number(show.episode) >= 0 ? Number(show.episode) : 0;
+  var eps = Number(epsPerSeason || show.episodesPerSeason) || 0;
+  if (e > 1) {
+    e = e - 1;
+  } else if (s > 1) {
+    s = s - 1;
+    e = eps || 12;
+  } else {
+    e = 0;
+  }
+  return Object.assign({}, show, { season: s, episode: e });
+}
+
+function progressPercent(show) {
+  var eps = Number(show.episodesPerSeason) || 0;
+  var s = Number(show.season) >= 0 ? Number(show.season) : 1;
+  var e = Number(show.episode) >= 0 ? Number(show.episode) : 0;
+  if (!eps || !s) return 0;
+  if (e <= 0) return 0;
+  return Math.max(0, Math.min(100, Math.round((e / eps) * 100)));
+}
+
+function toggleMood(show, mood) {
+  var moods = (show.moods || []).slice();
+  var i = moods.indexOf(mood);
+  if (i === -1) moods.push(mood); else moods.splice(i, 1);
+  return Object.assign({}, show, { moods: moods });
+}
+
+function markFinished(show, todayStr) {
+  return Object.assign({}, show, {
+    status: 'finished',
+    finishedAt: todayStr || '',
+    endedAt: progressLabel(show)
+  });
+}
+
+/* ---- Queue logic ---- */
+
+function moveInQueue(shows, id, dir) {
+  var positions = [];
+  for (var i = 0; i < shows.length; i++) {
+    if (shows[i].status === 'want') positions.push(i);
+  }
+  var pos = -1;
+  for (var j = 0; j < positions.length; j++) {
+    if (shows[positions[j]].id === id) { pos = j; break; }
+  }
+  if (pos === -1) return shows;
+  var other = dir > 0 ? pos + 1 : pos - 1;
+  if (other < 0 || other >= positions.length) return shows;
+  var out = shows.slice();
+  var a = positions[pos];
+  var b = positions[other];
+  var tmp = out[a]; out[a] = out[b]; out[b] = tmp;
+  return out;
+}
+
+/* ---- Tonight-pick shuffle logic ---- */
+/* rand: () => number in [0, 1)  (seeded in tests; Math.random in app) */
+function pickTonight(candidates, recentIds, rand, avoidCount) {
+  if (!Array.isArray(candidates) || candidates.length === 0) return null;
+  var pool = candidates;
+  var avoid = Math.max(1, Number(avoidCount) || 3);
+  if (Array.isArray(recentIds) && recentIds.length && candidates.length > avoid) {
+    var recent = {};
+    recentIds.forEach(function (id) { recent[id] = true; });
+    var fresh = candidates.filter(function (c) { return !recent[c.id]; });
+    if (fresh.length) pool = fresh;
+  }
+  var idx = Math.min(pool.length - 1, Math.max(0, Math.floor(rand() * pool.length)));
+  return pool[idx];
+}
+
+function tonightCandidates(shows, selectedMoods) {
+  var wantMoods = Array.isArray(selectedMoods) ? selectedMoods : [];
+  return shows.filter(function (s) {
+    if (s.status !== 'watching' && s.status !== 'want') return false;
+    if (!wantMoods.length) return true;
+    return (s.moods || []).some(function (m) { return wantMoods.indexOf(m) !== -1; });
+  });
+}
+
+function wrapUpLog(shows) {
+  return shows
+    .filter(function (s) { return s.status === 'finished' && s.finishedAt; })
+    .sort(function (a, b) {
+      if (a.finishedAt < b.finishedAt) return 1;
+      if (a.finishedAt > b.finishedAt) return -1;
+      return a.title.localeCompare(b.title);
+    });
+}
+
+/* Node/test bridge: lets tests/test.mjs require this logic block without any
+   browser APIs. Harmless no-op when the page runs in a real browser. */
+if (typeof module !== 'undefined' && module.exports) {
+  module.exports = {
+    defaultState: defaultState,
+    loadState: loadState,
+    saveState: saveState,
+    normalizeShow: normalizeShow,
+    progressLabel: progressLabel,
+    advanceEpisode: advanceEpisode,
+    retreatEpisode: retreatEpisode,
+    progressPercent: progressPercent,
+    toggleMood: toggleMood,
+    markFinished: markFinished,
+    moveInQueue: moveInQueue,
+    pickTonight: pickTonight,
+    tonightCandidates: tonightCandidates,
+    wrapUpLog: wrapUpLog
+  };
+}
+
+/* APP_LOGIC_END */
+
+/* ============ App wiring (browser only) ============ */
+function isBrowser() {
+  return typeof document !== 'undefined' && typeof document.getElementById === 'function';
+}
+
+function initApp() {
+  var state = loadState();
+  var editingId = null;
+  var formMoods = [];
+  var tonightMoodSel = [];
+  var $ = function (id) { return document.getElementById(id); };
+
+  var showForm = $('showForm');
+  var els = {
+    countWatching: $('countWatching'),
+    countQueue: $('countQueue'),
+    panelWatching: $('panel-watching'),
+    panelQueue: $('panel-queue'),
+    panelLog: $('panel-log'),
+    panelTonight: $('panel-tonight'),
+    pickResult: $('pickResult'),
+    tonightMoods: $('tonightMoods'),
+    formMoods: $('formMoods'),
+    addPanel: $('addPanel'),
+    addSummary: $('addSummary'),
+    formSubmit: $('formSubmit'),
+    formCancel: $('formCancel')
+  };
+
+  function persist() { saveState(state); }
+
+  function esc(text) {
+    var d = document.createElement('div');
+    d.textContent = text;
+    return d.innerHTML;
+  }
+
+  /* ---- Mood chips ---- */
+  function buildMoodPicker(container, selected, onToggle) {
+    container.innerHTML = '';
+    MOODS.forEach(function (m) {
+      var b = document.createElement('button');
+      b.type = 'button';
+      b.textContent = m;
+      if (selected.indexOf(m) !== -1) b.classList.add('selected');
+      b.addEventListener('click', function () { onToggle(m, b); });
+      container.appendChild(b);
+    });
+  }
+
+  buildMoodPicker(els.tonightMoods, tonightMoodSel, function (m, btn) {
+    var i = tonightMoodSel.indexOf(m);
+    if (i === -1) tonightMoodSel.push(m); else tonightMoodSel.splice(i, 1);
+    btn.classList.toggle('selected');
+  });
+
+  buildMoodPicker(els.formMoods, [], function (m, btn) {
+    var i = formMoods.indexOf(m);
+    if (i === -1) formMoods.push(m); else formMoods.splice(i, 1);
+    btn.classList.toggle('selected');
+  });
+
+  /* ---- Tabs ---- */
+  document.querySelectorAll('nav.tabs button').forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      document.querySelectorAll('nav.tabs button').forEach(function (b) { b.classList.remove('active'); });
+      document.querySelectorAll('section.panel').forEach(function (p) { p.classList.remove('active'); });
+      btn.classList.add('active');
+      $('panel-' + btn.getAttribute('data-tab')).classList.add('active');
+    });
+  });
+
+  /* ---- Rendering ---- */
+  function renderAll() {
+    var watching = state.shows.filter(function (s) { return s.status === 'watching'; });
+    var queue = state.shows.filter(function (s) { return s.status === 'want'; });
+    var finished = state.shows.filter(function (s) { return s.status === 'finished'; });
+    els.countWatching.textContent = watching.length;
+    els.countQueue.textContent = queue.length;
+    renderWatching(watching);
+    renderQueue(queue);
+    renderLog(wrapUpLog(state.shows), finished.length);
+    renderTonightIntro(state);
+  }
+
+  function moodsHtml(show) {
+    return (show.moods || []).map(function (m) {
+      return '<span class="chip mood">' + esc(m) + '</span>';
+    }).join(' ');
+  }
+
+  function statusTagHtml(show) {
+    if (show.status === 'finished') return '<span class="chip">watched it all</span>';
+    return show.ended
+      ? '<span class="chip tag-ended">Ended</span>'
+      : '<span class="chip tag-ongoing">Ongoing</span>';
+  }
+
+  function cardHtml(show, posInQueue, queueLen) {
+    var html = '<div class="card" data-id="' + esc(show.id) + '">';
+    html += '<div class="row"><h3 class="grow">' + esc(show.title) + '</h3>' + statusTagHtml(show) + '</div>';
+    if (show.platform) html += '<div class="row"><span class="chip platform">' + esc(show.platform) + '</span></div>';
+    if (show.status === 'watching') {
+      var pct = progressPercent(show);
+      html += '<p class="progress">Stopped at <strong>' + esc(progressLabel(show)) + '</strong></p>';
+      if (pct > 0) html += '<div class="bar" aria-hidden="true"><span style="width:' + pct + '%"></span></div>';
+      html += '<div class="actions">' +
+        '<button class="btn small" data-act="prev">− Episode</button>' +
+        '<button class="btn small" data-act="next">+ Episode</button>' +
+        '<button class="btn small" data-act="finish">Wrap up (finished)</button>' +
+        '<button class="btn small" data-act="edit">Edit</button>' +
+        '<button class="btn small danger" data-act="delete">Remove</button>' +
+        '</div>';
+    } else if (show.status === 'want') {
+      html += '<p class="progress">' + esc(progressLabel(show)) + ' · position ' + (posInQueue + 1) + ' of ' + queueLen + ' in queue</p>';
+      html += '<div class="actions">' +
+        '<button class="btn small" data-act="up" ' + (posInQueue === 0 ? 'disabled' : '') + '>↑ Move up</button>' +
+        '<button class="btn small" data-act="down" ' + (posInQueue === queueLen - 1 ? 'disabled' : '') + '>↓ Move down</button>' +
+        '<button class="btn small primary" data-act="start">Start watching</button>' +
+        '<button class="btn small" data-act="edit">Edit</button>' +
+        '<button class="btn small danger" data-act="delete">Remove</button>' +
+        '</div>';
+    }
+    if ((show.moods || []).length) html += '<div class="row">' + moodsHtml(show) + '</div>';
+    if (show.note) html += '<p class="note">Someday note: ' + esc(show.note) + '</p>';
+    html += '</div>';
+    return html;
+  }
+
+  function bindCardEvents(container) {
+    container.querySelectorAll('.card button[data-act]').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        var card = btn.closest('.card');
+        var id = card.getAttribute('data-id');
+        var show = state.shows.filter(function (s) { return s.id === id; })[0];
+        if (!show) return;
+        handleAction(btn.getAttribute('data-act'), id);
+      });
+    });
+  }
+
+  function handleAction(act, id) {
+    var idx = state.shows.findIndex(function (s) { return s.id === id; });
+    if (idx === -1) return;
+    var show = state.shows[idx];
+    if (act === 'next') {
+      state.shows[idx] = advanceEpisode(show);
+    } else if (act === 'prev') {
+      state.shows[idx] = retreatEpisode(show);
+    } else if (act === 'finish') {
+      if (!confirm('Wrap up "' + show.title + '"? It moves to the wrap-up log and leaves the watching list.')) return;
+      state.shows[idx] = markFinished(show, new Date().toISOString().slice(0, 10));
+    } else if (act === 'start') {
+      state.shows[idx] = Object.assign({}, show, { status: 'watching' });
+    } else if (act === 'edit') {
+      startEdit(id);
+    } else if (act === 'delete') {
+      if (!confirm('Remove "' + show.title + '" from your lists? This cannot be undone.')) return;
+      state.shows.splice(idx, 1);
+      state.picks = state.picks.filter(function (p) { return p !== id; });
+    } else if (act === 'up' || act === 'down') {
+      state.shows = moveInQueue(state.shows, id, act === 'down' ? 1 : -1);
+    }
+    persist();
+    renderAll();
+    if (act === 'edit' || act === 'delete') scrollToForm();
+  }
+
+  function renderWatching(list) {
+    if (!list.length) {
+      els.panelWatching.innerHTML = '<div class="empty"><span class="big">📺</span>Nothing in progress yet.<br>Use “Add a show” below, or move something up from the queue.</div>';
+      return;
+    }
+    els.panelWatching.innerHTML = list.map(function (s) { return cardHtml(s, 0, 0); }).join('');
+    bindCardEvents(els.panelWatching);
+  }
+
+  function renderQueue(list) {
+    if (!list.length) {
+      els.panelQueue.innerHTML = '<div class="empty"><span class="big">📌</span>The queue is empty.<br>Add shows below with “Want to watch” to keep a someday-list ready.</div>';
+      return;
+    }
+    els.panelQueue.innerHTML = list.map(function (s, i) { return cardHtml(s, i, list.length); }).join('');
+    bindCardEvents(els.panelQueue);
+  }
+
+  function renderLog(entries, totalFinished) {
+    var html = '';
+    if (totalFinished) {
+      html += '<div class="card"><div class="log-stats">You\'ve finished <strong>' + totalFinished + '</strong> show' + (totalFinished === 1 ? '' : 's') + ' all the way through. Nice going.</div>';
+      if (!entries.length) {
+        html += '<div class="empty">Finished shows will appear here with the date you wrapped up.</div></div>';
+      } else {
+        entries.forEach(function (s) {
+          html += '<div class="log-entry"><span class="date">' + esc(s.finishedAt) + '</span>' +
+            '<span><strong>' + esc(s.title) + '</strong>' +
+            (s.platform ? ' <span class="chip platform">' + esc(s.platform) + '</span>' : '') +
+            ' — finished at <em>' + esc(s.endedAt || 'not started') + '</em></span></div>';
+        });
+        html += '</div>';
+      }
+    } else {
+      html = '<div class="empty"><span class="big">🎉</span>No wrap-ups yet.<br>When you finish a show, press “Wrap up (finished)” on its card and it lands here — a little celebration of shows actually finished.</div>';
+    }
+    els.panelLog.innerHTML = html;
+  }
+
+  function renderTonightIntro(state) {
+    var intro = document.createElement('p');
+    intro.className = 'progress';
+    var n = tonightCandidates(state.shows, tonightMoodSel).length;
+    intro.textContent = n ? n + ' show' + (n === 1 ? '' : 's') + ' ready to shuffle.' : 'No shows match — add some or pick fewer moods.';
+    var old = els.panelTonight.querySelector('p.tonight-count');
+    if (old) old.remove();
+    intro.className = 'progress tonight-count';
+    els.panelTonight.querySelector('.card').insertBefore(intro, els.panelTonight.querySelector('.actions'));
+  }
+
+  /* ---- Tonight shuffle ---- */
+  $('shuffleBtn').addEventListener('click', function () {
+    var candidates = tonightCandidates(state.shows, tonightMoodSel);
+    var pick = pickTonight(candidates, state.picks, Math.random, 3);
+    if (!pick) {
+      els.pickResult.hidden = false;
+      els.pickResult.innerHTML = '<div class="card"><div class="empty"><span class="big">🍿</span>' +
+        'Nothing matches that mood yet.<br>Add a show (with that mood tag) below, then shuffle again.</div></div>';
+      return;
+    }
+    state.picks = [pick.id].concat(state.picks.filter(function (id) { return id !== pick.id; })).slice(0, 5);
+    persist();
+    var html = '<div class="card"><div class="row"><h3 class="grow">🎲 Tonight: ' + esc(pick.title) + '</h3>' + statusTagHtml(pick) + '</div>';
+    if (pick.platform) html += '<div class="row"><span class="chip platform">' + esc(pick.platform) + '</span></div>';
+    if (pick.status === 'watching') html += '<p class="progress">Stopped at <strong>' + esc(progressLabel(pick)) + '</strong></p>';
+    if ((pick.moods || []).length) html += '<div class="row">' + moodsHtml(pick) + '</div>';
+    if (pick.note) html += '<p class="note">Someday note: ' + esc(pick.note) + '</p>';
+    html += '<div class="actions"><button class="btn primary" data-pick-act="start">Open episode book-keeping</button>' +
+      '<button class="btn" data-pick-act="again">Shuffle again</button></div></div>';
+    els.pickResult.hidden = false;
+    els.pickResult.innerHTML = html;
+    var startBtn = els.pickResult.querySelector('[data-pick-act="start"]');
+    startBtn.addEventListener('click', function () {
+      if (pick.status === 'want') {
+        var i = state.shows.findIndex(function (s) { return s.id === pick.id; });
+        if (i !== -1) state.shows[i] = Object.assign({}, state.shows[i], { status: 'watching' });
+        persist(); renderAll();
+      }
+      document.querySelector('nav.tabs button[data-tab="watching"]').click();
+      els.pickResult.hidden = true;
+    });
+    els.pickResult.querySelector('[data-pick-act="again"]').addEventListener('click', function () {
+      $('shuffleBtn').click();
+    });
+  });
+
+  /* ---- Add / edit form ---- */
+  function readForm() {
+    var t = $('fTitle').value.trim();
+    if (!t) return null;
+    var eps = Number($('fEps').value) > 0 ? Number($('fEps').value) : null;
+    return {
+      title: t,
+      platform: $('fPlatform').value.trim(),
+      status: $('fStatus').value === 'want' ? 'want' : 'watching',
+      season: Math.max(0, Number($('fSeason').value) || 1),
+      episode: Math.max(0, Number($('fEpisode').value) || 0),
+      episodesPerSeason: eps,
+      moods: formMoods.slice(),
+      ended: $('fEnded').value === 'yes',
+      note: $('fNote').value.trim()
+    };
+  }
+
+  showForm.addEventListener('submit', function (ev) {
+    ev.preventDefault();
+    var data = readForm();
+    if (!data) return;
+    if (editingId) {
+      var i = state.shows.findIndex(function (s) { return s.id === editingId; });
+      if (i !== -1) {
+        var keep = state.shows[i];
+        state.shows[i] = Object.assign({}, keep, data, {
+          finishedAt: data.status === 'finished' ? keep.finishedAt : '',
+          endedAt: data.status === 'finished' ? keep.endedAt : ''
+        });
+      }
+      cancelEdit();
+    } else {
+      data.id = uid();
+      data.addedAt = new Date().toISOString().slice(0, 10);
+      state.shows.push(data);
+      if (data.status === 'want') {
+        els.addPanel.open = false;
+        document.querySelector('nav.tabs button[data-tab="queue"]').click();
+      } else {
+        document.querySelector('nav.tabs button[data-tab="watching"]').click();
+      }
+      showForm.reset();
+      formMoods = [];
+      buildMoodPicker(els.formMoods, [], function (m, btn) {
+        var j = formMoods.indexOf(m);
+        if (j === -1) formMoods.push(m); else formMoods.splice(j, 1);
+        btn.classList.toggle('selected');
+      });
+    }
+    persist();
+    renderAll();
+  });
+
+  function startEdit(id) {
+    var show = state.shows.filter(function (s) { return s.id === id; })[0];
+    if (!show) return;
+    editingId = id;
+    formMoods = (show.moods || []).slice();
+    $('fTitle').value = show.title;
+    $('fPlatform').value = show.platform;
+    $('fStatus').value = show.status === 'want' ? 'want' : (show.status === 'finished' ? 'watching' : 'watching');
+    $('fSeason').value = show.season;
+    $('fEpisode').value = show.episode;
+    $('fEps').value = show.episodesPerSeason || '';
+    $('fEnded').value = show.ended ? 'yes' : 'no';
+    $('fNote').value = show.note;
+    els.formSubmit.textContent = 'Save changes';
+    els.formCancel.hidden = false;
+    els.addSummary.textContent = 'Editing: ' + show.title;
+    els.addPanel.open = true;
+    buildMoodPicker(els.formMoods, formMoods, function (m, btn) {
+      var j = formMoods.indexOf(m);
+      if (j === -1) formMoods.push(m); else formMoods.splice(j, 1);
+      btn.classList.toggle('selected');
+    });
+    scrollToForm();
+  }
+
+  function cancelEdit() {
+    editingId = null;
+    formMoods = [];
+    els.formSubmit.textContent = 'Add show';
+    els.formCancel.hidden = true;
+    els.addSummary.textContent = 'Add a show';
+    showForm.reset();
+    buildMoodPicker(els.formMoods, [], function (m, btn) {
+      var j = formMoods.indexOf(m);
+      if (j === -1) formMoods.push(m); else formMoods.splice(j, 1);
+      btn.classList.toggle('selected');
+    });
+  }
+
+  els.formCancel.addEventListener('click', function () {
+    cancelEdit();
+    els.addPanel.open = false;
+  });
+
+  function scrollToForm() {
+    els.addPanel.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+
+  /* ---- Backup: export / import / clear ---- */
+  $('exportBtn').addEventListener('click', function () {
+    var blob = new Blob([JSON.stringify(state, null, 2)], { type: 'application/json' });
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement('a');
+    a.href = url;
+    a.download = 'show-tracker-backup-' + new Date().toISOString().slice(0, 10) + '.json';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  });
+
+  $('importBtn').addEventListener('click', function () {
+    if (!confirm('Import a backup? This replaces everything currently here.')) return;
+    $('importFile').click();
+  });
+
+  $('importFile').addEventListener('change', function (ev) {
+    var file = ev.target.files && ev.target.files[0];
+    if (!file) return;
+    var reader = new FileReader();
+    reader.onload = function () {
+      try {
+        var data = JSON.parse(String(reader.result));
+        if (!data || !Array.isArray(data.shows)) throw new Error('bad shape');
+        state = { shows: data.shows.map(normalizeShow), picks: Array.isArray(data.picks) ? data.picks.slice(0, 5) : [] };
+        persist();
+        renderAll();
+      } catch (e) {
+        alert("That file doesn't look like a Show Tracker backup.");
+      }
+    };
+    reader.readAsText(file);
+    ev.target.value = '';
+  });
+
+  $('clearBtn').addEventListener('click', function () {
+    if (!confirm('Clear the whole watch-list from this browser? (Export a backup first if you might regret this.)')) return;
+    if (!confirm('Really erase everything? There is no undo.')) return;
+    state = defaultState();
+    persist();
+    renderAll();
+  });
+
+  renderAll();
+}
+
+if (isBrowser()) {
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initApp);
+  } else {
+    initApp();
+  }
+}
+</script>
+</body>
+</html>
